@@ -3,7 +3,7 @@ package api
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
-	"github.com/mwdev22/WebIDE/handlers"
+	"github.com/mwdev22/WebIDE/backend/handlers"
 )
 
 type Server struct {

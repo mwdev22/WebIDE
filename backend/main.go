@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/mwdev22/WebIDE/api"
-	database "github.com/mwdev22/WebIDE/db"
-	"github.com/mwdev22/WebIDE/utils"
+	"github.com/mwdev22/WebIDE/backend/api"
+	database "github.com/mwdev22/WebIDE/backend/db"
+	"github.com/mwdev22/WebIDE/backend/utils"
 )
 
 func main() {

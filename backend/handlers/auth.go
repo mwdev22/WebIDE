@@ -10,7 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
-	"github.com/mwdev22/WebIDE/utils"
+	"github.com/mwdev22/WebIDE/backend/utils"
 	"golang.org/x/oauth2"
 )
 
