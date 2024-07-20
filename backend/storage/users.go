@@ -1,19 +1,33 @@
 package storage
 
-import "gorm.io/gorm"
+import (
+	"fmt"
+
+	"gorm.io/gorm"
+)
 
 type User struct {
 	gorm.Model
 
-	ID      uint
-	Name    string
-	Profile Profile
+	Name  string
+	Bio   string
+	Files File
 }
 
-type Profile struct {
-	gorm.Model
+type UserStore struct {
+	db *gorm.DB
+}
 
-	ID     uint
-	UserID uint
-	Bio    string
+func (s *UserStore) GetUsers() ([]User, error) {
+	users := s.db.Find(&User{}).Error
+	fmt.Println(users)
+	return []User{}, nil
+}
+
+func (s *UserStore) GetUserByID(id int) (*User, error) {
+	var user User
+	if err := s.db.Where("ID = ?", id).First(&user).Error; err != nil {
+		return nil, fmt.Errorf("failed to get user with id %v, %s", id, err)
+	}
+	return &user, nil
 }

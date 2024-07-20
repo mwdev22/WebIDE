@@ -31,22 +31,19 @@ func handleGitHubLogin(c *fiber.Ctx) error {
 
 func handleGitHubCallback(c *fiber.Ctx) error {
 	if c.Query("state") != utils.OAuthStateString {
-		log.Println("invalid oauth state")
-		return c.Redirect("/", http.StatusTemporaryRedirect)
+		return c.JSON(map[string]string{"error": "invalid oauth state"})
 	}
 
 	code := c.Query("code")
 	if code == "" {
-		log.Println("no code in query")
-		return c.Redirect("/", http.StatusTemporaryRedirect)
+		return c.JSON(map[string]string{"error": "no code in query"})
 	}
 
 	log.Print(c.Queries())
 
 	token, err := conf.Exchange(context.Background(), code)
 	if err != nil {
-		log.Printf("oauthConf.Exchange() failed with %s", err)
-		return c.Redirect("/", http.StatusTemporaryRedirect)
+		return c.JSON(err)
 	}
 
 	client := &http.Client{}
@@ -65,10 +62,8 @@ func handleGitHubCallback(c *fiber.Ctx) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("GitHub API returned non-200 status: %d %s", resp.StatusCode, resp.Status)
-		return c.Redirect("/", http.StatusTemporaryRedirect)
+		return c.JSON(map[string]string{"error": resp.Status + " returned by GithubAPI"})
 	}
-
 	var buf bytes.Buffer
 	var data map[string]interface{}
 
@@ -83,5 +78,7 @@ func handleGitHubCallback(c *fiber.Ctx) error {
 	log.Print(data["login"].(string))
 	b := []byte((data["login"].(string)))
 	sess.Storage.Set("username", b, time.Duration(time.Duration.Minutes(60)))
-	return c.SendString(newStr)
+	return c.JSON(map[string]string{
+		"username":     data["login"].(string),
+		"access_token": data["access_token"].(string)})
 }
