@@ -6,20 +6,16 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/mwdev22/WebIDE/backend/utils"
 	"golang.org/x/oauth2"
 )
 
 var conf *oauth2.Config
-var sess *session.Store
 
-func RegisterAuth(r fiber.Router, s *session.Store) {
+func RegisterAuth(r fiber.Router) {
 	conf = utils.GetGithubConfig() // initializng the config for handlers
-	sess = s
 	r.Get("/login", handleGitHubLogin)
 	r.Get("/callback", handleGitHubCallback)
 }
@@ -38,8 +34,6 @@ func handleGitHubCallback(c *fiber.Ctx) error {
 	if code == "" {
 		return c.JSON(map[string]string{"error": "no code in query"})
 	}
-
-	log.Print(c.Queries())
 
 	token, err := conf.Exchange(context.Background(), code)
 	if err != nil {
@@ -75,10 +69,9 @@ func handleGitHubCallback(c *fiber.Ctx) error {
 		log.Fatal(err)
 	}
 
-	log.Print(data["login"].(string))
-	b := []byte((data["login"].(string)))
-	sess.Storage.Set("username", b, time.Duration(time.Duration.Minutes(60)))
 	return c.JSON(map[string]string{
 		"username":     data["login"].(string),
-		"access_token": data["access_token"].(string)})
+		"access_token": token.AccessToken,
+		"profile_url":  data["url"].(string)},
+	)
 }

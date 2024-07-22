@@ -2,7 +2,6 @@ package api
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/mwdev22/WebIDE/backend/handlers"
 )
 
@@ -21,10 +20,8 @@ func (s *Server) Run() error {
 	api := app.Group("/api")
 	v1 := api.Group("/v1")
 
-	sess := session.New()
-
 	auth := v1.Group("/auth")
-	handlers.RegisterAuth(auth, sess)
+	handlers.RegisterAuth(auth)
 
 	return app.Listen(s.addr)
 }
