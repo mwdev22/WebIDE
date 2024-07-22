@@ -6,13 +6,17 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
 	"github.com/mwdev22/WebIDE/backend/utils"
 	"golang.org/x/oauth2"
 )
 
 var conf *oauth2.Config
+
+var jwtSecret = []byte(utils.SecretKey)
 
 func RegisterAuth(r fiber.Router) {
 	conf = utils.GetGithubConfig() // initializng the config for handlers
@@ -69,9 +73,28 @@ func handleGitHubCallback(c *fiber.Ctx) error {
 		log.Fatal(err)
 	}
 
+	jwtToken, err := createJWT(data["login"].(string))
+	if err != nil {
+		log.Printf("createJWT: %s", err)
+		return c.JSON(map[string]string{"error": "failed to create JWT"})
+	}
+
 	return c.JSON(map[string]string{
-		"username":     data["login"].(string),
-		"access_token": token.AccessToken,
-		"profile_url":  data["url"].(string)},
-	)
+		"username":    data["login"].(string),
+		"profile_url": data["url"].(string),
+		"jwt":         jwtToken,
+	})
+}
+
+func handleNewUser(c *fiber.Ctx) error {
+	return nil
+}
+
+func createJWT(username string) (string, error) {
+	claims := jwt.MapClaims{
+		"username": username,
+		"exp":      time.Now().Add(time.Hour * 72).Unix(), // Token expires after 72 hours
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtSecret)
 }
