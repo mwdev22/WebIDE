@@ -1,100 +1,119 @@
 package handlers
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"log"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
+	"github.com/mwdev22/WebIDE/backend/storage"
+	"github.com/mwdev22/WebIDE/backend/types"
 	"github.com/mwdev22/WebIDE/backend/utils"
 	"golang.org/x/oauth2"
 )
 
-var conf *oauth2.Config
-
-var jwtSecret = []byte(utils.SecretKey)
-
-func RegisterAuth(r fiber.Router) {
-	conf = utils.GetGithubConfig() // initializng the config for handlers
-	r.Get("/login", handleGitHubLogin)
-	r.Get("/callback", handleGitHubCallback)
+type AuthController struct {
+	r         fiber.Router
+	userStore *storage.UserStore
+	conf      *oauth2.Config
+	client    *http.Client
 }
 
-func handleGitHubLogin(c *fiber.Ctx) error {
-	url := conf.AuthCodeURL(utils.OAuthStateString)
+func NewAuthController(r fiber.Router, userStore *storage.UserStore) *AuthController {
+	return &AuthController{
+		r:         r,
+		userStore: userStore,
+		conf:      utils.GetGithubConfig(),
+		client:    &http.Client{},
+	}
+}
+
+func (ctr *AuthController) RegisterRoutes() {
+	ctr.r.Get("/login", ctr.handleGitHubLogin)
+	ctr.r.Get("/callback", ctr.handleGitHubCallback)
+}
+
+func (ctr *AuthController) handleGitHubLogin(c *fiber.Ctx) error {
+	url := ctr.conf.AuthCodeURL(utils.OAuthStateString)
 	return c.Redirect(url, http.StatusTemporaryRedirect)
 }
 
-func handleGitHubCallback(c *fiber.Ctx) error {
+func (ctr *AuthController) handleGitHubCallback(c *fiber.Ctx) error {
 	if c.Query("state") != utils.OAuthStateString {
-		return c.JSON(map[string]string{"error": "invalid oauth state"})
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "invalid oauth state"})
 	}
 
 	code := c.Query("code")
 	if code == "" {
-		return c.JSON(map[string]string{"error": "no code in query"})
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "no code in query"})
 	}
 
-	token, err := conf.Exchange(context.Background(), code)
+	token, err := ctr.conf.Exchange(context.Background(), code)
 	if err != nil {
-		return c.JSON(err)
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "failed to exchange token"})
 	}
 
-	client := &http.Client{}
 	req, err := http.NewRequest("GET", "https://api.github.com/user", nil)
 	if err != nil {
-		log.Printf("NewRequest: %s", err)
-		return c.Redirect("/", http.StatusTemporaryRedirect)
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create request"})
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 
-	resp, err := client.Do(req)
+	resp, err := ctr.client.Do(req)
 	if err != nil {
-		log.Printf("client.Do: %s", err)
-		return c.Redirect("/", http.StatusTemporaryRedirect)
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "failed to get user info"})
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return c.JSON(map[string]string{"error": resp.Status + " returned by GithubAPI"})
+		return c.Status(resp.StatusCode).JSON(fiber.Map{"error": resp.Status})
 	}
-	var buf bytes.Buffer
+
 	var data map[string]interface{}
-
-	buf.ReadFrom(resp.Body)
-	newStr := buf.String()
-
-	err = json.Unmarshal([]byte(newStr), &data)
-	if err != nil {
-		log.Fatal(err)
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "failed to parse response"})
 	}
 
-	jwtToken, err := createJWT(data["login"].(string))
-	if err != nil {
-		log.Printf("createJWT: %s", err)
-		return c.JSON(map[string]string{"error": "failed to create JWT"})
+	username := data["login"].(string)
+	githubID := uint64(data["id"].(float64))
+	githubURL := data["url"].(string)
+
+	if user, err := ctr.userStore.GetUserByID(githubID); err != nil {
+		fmt.Printf("user not found, %v", user)
+		var newUser = types.User{
+			GithubID:  githubID,
+			GithubURL: githubURL,
+			Username:  username,
+		}
+
+		if err := ctr.userStore.CreateUser(&newUser); err != nil {
+			return c.JSON(fiber.Map{
+				"error": err,
+			})
+		}
 	}
 
-	return c.JSON(map[string]string{
-		"username":    data["login"].(string),
-		"profile_url": data["url"].(string),
-		"jwt":         jwtToken,
+	jwtToken, err := createJWT(username)
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create JWT"})
+	}
+
+	return c.JSON(fiber.Map{
+		"username": username,
+		"gitUrl":   githubURL,
+		"gitID":    githubID,
+		"jwt":      jwtToken,
 	})
-}
-
-func handleNewUser(c *fiber.Ctx) error {
-	return nil
 }
 
 func createJWT(username string) (string, error) {
 	claims := jwt.MapClaims{
 		"username": username,
-		"exp":      time.Now().Add(time.Hour * 72).Unix(), // Token expires after 72 hours
+		"exp":      time.Now().Add(time.Hour * 72).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString([]byte(utils.SecretKey))
 }

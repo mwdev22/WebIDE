@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/mwdev22/WebIDE/backend/api"
-	database "github.com/mwdev22/WebIDE/backend/db"
+	database "github.com/mwdev22/WebIDE/backend/database"
 	"github.com/mwdev22/WebIDE/backend/utils"
 )
 
@@ -24,7 +24,7 @@ func main() {
 	}
 	database.InitConn(db)
 
-	server := api.NewServer(":8080")
+	server := api.NewServer(":8080", db)
 	err = server.Run()
 	if err != nil {
 		log.Fatal(err)
