@@ -1,20 +1,13 @@
 package storage
 
 import (
+	"fmt"
+
 	"gorm.io/gorm"
 )
 
-type Repository struct {
-	gorm.Model
-	Name string
-
-	UserID int
-	Files  []File
-}
-
 type File struct {
 	gorm.Model
-
 	Name         string
 	Content      string
 	RepositoryID int
@@ -22,4 +15,12 @@ type File struct {
 
 type FileStore struct {
 	db *gorm.DB
+}
+
+func (s *FileStore) GetFileByID(id int) (*File, error) {
+	var file File
+	if err := s.db.Where("ID = ?", id).First(&file).Error; err != nil {
+		return nil, fmt.Errorf("failed to get file with id %v, %s", id, err)
+	}
+	return &file, nil
 }

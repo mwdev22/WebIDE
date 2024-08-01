@@ -84,7 +84,7 @@ func (ctr *AuthController) handleGitHubCallback(c *fiber.Ctx) error {
 	if user, err := ctr.userStore.GetUserByID(githubID); err != nil {
 		fmt.Printf("user not found, %v", user)
 		var newUser = types.User{
-			GithubID:  githubID,
+			ID:        githubID,
 			GithubURL: githubURL,
 			Username:  username,
 		}

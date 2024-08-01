@@ -1,0 +1,32 @@
+package storage
+
+import (
+	"fmt"
+
+	"github.com/mwdev22/WebIDE/backend/types"
+	"gorm.io/gorm"
+)
+
+type Repository struct {
+	gorm.Model
+	Name    string
+	Private bool
+	UserID  int
+	Files   []File
+}
+
+type RepoStore struct {
+	db *gorm.DB
+}
+
+func (s *RepoStore) GetRepoByID(id int) (*Repository, error) {
+	var repo Repository
+	if err := s.db.Where("ID = ?", id).First(&repo).Error; err != nil {
+		return nil, fmt.Errorf("failed to get file with id %v, %s", id, err)
+	}
+	return &repo, nil
+}
+
+func (s *RepoStore) CreateRepo(data types.Repo) {
+
+}

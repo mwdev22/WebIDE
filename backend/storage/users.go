@@ -44,7 +44,7 @@ func (s *UserStore) GetUserByID(id uint64) (*User, error) {
 
 func (s *UserStore) CreateUser(data *types.User) error {
 	var newUser = User{
-		ID:        data.GithubID,
+		ID:        data.ID,
 		Username:  data.Username,
 		GithubURL: data.GithubURL,
 	}
