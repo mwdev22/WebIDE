@@ -19,6 +19,12 @@ type RepoStore struct {
 	db *gorm.DB
 }
 
+func NewRepoStore(db *gorm.DB) *RepoStore {
+	return &RepoStore{
+		db: db,
+	}
+}
+
 func (s *RepoStore) GetRepoByID(id int) (*Repository, error) {
 	var repo Repository
 	if err := s.db.Where("ID = ?", id).First(&repo).Error; err != nil {

@@ -17,6 +17,12 @@ type FileStore struct {
 	db *gorm.DB
 }
 
+func NewFileStore(db *gorm.DB) *FileStore {
+	return &FileStore{
+		db: db,
+	}
+}
+
 func (s *FileStore) GetFileByID(id int) (*File, error) {
 	var file File
 	if err := s.db.Where("ID = ?", id).First(&file).Error; err != nil {

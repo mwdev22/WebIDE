@@ -28,6 +28,8 @@ func (s *Server) Run() error {
 
 	// storages
 	userStore := storage.NewUserStore(s.db)
+	// repoStore := storage.NewRepoStore(s.db)
+	// fileStore := storage.NewFileStore(s.db)
 
 	auth := handlers.NewAuthController(v1.Group("/auth"), userStore)
 	auth.RegisterRoutes()
