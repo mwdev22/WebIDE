@@ -1,9 +1,9 @@
-# project variables
+# Project variables
 PROJECT_NAME := WebIDE
 PKG := ./...
 MAIN := ./backend/main.go
 
-# go commands
+# Go commands
 BUILD := go build
 CLEAN := go clean
 FMT := go fmt
@@ -11,13 +11,13 @@ VET := go vet
 TEST := go test
 RUN := go run
 
-# targets
+# Targets
 .PHONY: all build clean fmt vet test run
 
 all: fmt vet test build
 
 build:
-	$(BUILD) -o $(PROJECT_NAME) $(MAIN)
+	GOOS=$(GOOS) GOARCH=$(GOARCH) $(BUILD) -o $(PROJECT_NAME) $(MAIN)
 
 clean:
 	$(CLEAN)
