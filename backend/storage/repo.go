@@ -33,6 +33,14 @@ func (s *RepoStore) GetRepoByID(id int) (*Repository, error) {
 	return &repo, nil
 }
 
-func (s *RepoStore) CreateRepo(data types.Repo) {
-
+func (s *RepoStore) CreateRepo(data types.Repo) error {
+	var repo = Repository{
+		Name:    data.Name,
+		Private: data.Private,
+		UserID:  data.UserID,
+	}
+	if err := s.db.Create(&repo).Error; err != nil {
+		return err
+	}
+	return nil
 }
