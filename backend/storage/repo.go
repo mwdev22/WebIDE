@@ -33,6 +33,14 @@ func (s *RepoStore) GetRepoByID(id int) (*Repository, error) {
 	return &repo, nil
 }
 
+func (s *RepoStore) GetRepoByUserID(id int) (*Repository, error) {
+	var repo Repository
+	if err := s.db.Where("UserID = ?", id).First(&repo).Error; err != nil {
+		return nil, fmt.Errorf("failed to get file with id %v, %s", id, err)
+	}
+	return &repo, nil
+}
+
 func (s *RepoStore) CreateRepo(data types.Repo) error {
 	var repo = Repository{
 		Name:    data.Name,

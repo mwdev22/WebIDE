@@ -28,11 +28,14 @@ func (s *Server) Run() error {
 
 	// storages
 	userStore := storage.NewUserStore(s.db)
-	// repoStore := storage.NewRepoStore(s.db)
-	// fileStore := storage.NewFileStore(s.db)
+	repoStore := storage.NewRepoStore(s.db)
+	fileStore := storage.NewFileStore(s.db)
 
 	auth := handlers.NewAuthController(v1.Group("/auth"), userStore)
+	repo := handlers.NewRepoController(v1.Group("/repo"), userStore, repoStore, fileStore)
+
 	auth.RegisterRoutes()
+	repo.RegisterRoutes()
 
 	return app.Listen(s.addr)
 }
