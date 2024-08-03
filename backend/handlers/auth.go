@@ -32,8 +32,8 @@ func NewAuthController(r fiber.Router, userStore *storage.UserStore) *AuthContro
 }
 
 func (ctr *AuthController) RegisterRoutes() {
-	ctr.r.Get("/login", HandleApiError(ctr.handleGitHubLogin))
-	ctr.r.Get("/callback", HandleApiError(ctr.handleGitHubCallback))
+	ctr.r.Get("/login", ErrMiddleware(ctr.handleGitHubLogin))
+	ctr.r.Get("/callback", ErrMiddleware(ctr.handleGitHubCallback))
 }
 
 func (ctr *AuthController) handleGitHubLogin(c *fiber.Ctx) error {
