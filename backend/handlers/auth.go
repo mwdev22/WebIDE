@@ -32,8 +32,8 @@ func NewAuthController(r fiber.Router, userStore *storage.UserStore) *AuthContro
 }
 
 func (ctr *AuthController) RegisterRoutes() {
-	ctr.r.Get("/login", ctr.handleGitHubLogin)
-	ctr.r.Get("/callback", ctr.handleGitHubCallback)
+	ctr.r.Get("/login", HandleApiError(ctr.handleGitHubLogin))
+	ctr.r.Get("/callback", HandleApiError(ctr.handleGitHubCallback))
 }
 
 func (ctr *AuthController) handleGitHubLogin(c *fiber.Ctx) error {
@@ -43,38 +43,38 @@ func (ctr *AuthController) handleGitHubLogin(c *fiber.Ctx) error {
 
 func (ctr *AuthController) handleGitHubCallback(c *fiber.Ctx) error {
 	if c.Query("state") != utils.OAuthStateString {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "invalid oauth state"})
+		return ExternalServiceErr(fmt.Errorf("bad state string"))
 	}
 
 	code := c.Query("code")
 	if code == "" {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "no code in query"})
+		return ExternalServiceErr(fmt.Errorf("no code in query"))
 	}
 
 	token, err := ctr.conf.Exchange(context.Background(), code)
 	if err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "failed to exchange token"})
+		return ExternalServiceErr(err)
 	}
 
 	req, err := http.NewRequest("GET", "https://api.github.com/user", nil)
 	if err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create request"})
+		return ExternalServiceErr(err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 
 	resp, err := ctr.client.Do(req)
 	if err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "failed to get user info"})
+		return ExternalServiceErr(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return c.Status(resp.StatusCode).JSON(fiber.Map{"error": resp.Status})
+		return ExternalServiceErr(err)
 	}
 
 	var data map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "failed to parse response"})
+		InvalidJSON()
 	}
 
 	username := data["login"].(string)
@@ -90,15 +90,13 @@ func (ctr *AuthController) handleGitHubCallback(c *fiber.Ctx) error {
 		}
 
 		if err := ctr.userStore.CreateUser(&newUser); err != nil {
-			return c.JSON(fiber.Map{
-				"error": err,
-			})
+			return BadQuery(err)
 		}
 	}
 
 	jwtToken, err := createJWT(username)
 	if err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create JWT"})
+		return NewApiError(fiber.StatusBadRequest, err)
 	}
 
 	return c.JSON(fiber.Map{
