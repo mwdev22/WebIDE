@@ -15,6 +15,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+var jwtSecret []byte
+
 type AuthController struct {
 	r         fiber.Router
 	userStore *storage.UserStore
@@ -32,6 +34,7 @@ func NewAuthController(r fiber.Router, userStore *storage.UserStore) *AuthContro
 }
 
 func (ctr *AuthController) RegisterRoutes() {
+	jwtSecret = utils.SecretKey
 	ctr.r.Get("/login", ErrMiddleware(ctr.handleGitHubLogin))
 	ctr.r.Get("/callback", ErrMiddleware(ctr.handleGitHubCallback))
 }
@@ -94,7 +97,7 @@ func (ctr *AuthController) handleGitHubCallback(c *fiber.Ctx) error {
 		}
 	}
 
-	jwtToken, err := createJWT(username, githubID)
+	jwtToken, err := createJWT(githubID)
 	if err != nil {
 		return NewApiError(fiber.StatusBadRequest, err)
 	}
@@ -103,15 +106,14 @@ func (ctr *AuthController) handleGitHubCallback(c *fiber.Ctx) error {
 		"username": username,
 		"gitUrl":   githubURL,
 		"gitID":    githubID,
-		"jwt":      jwtToken,
+		"token":    jwtToken,
 	})
 }
 
-func createJWT(username string, userID uint) (string, error) {
+func createJWT(userID uint) (string, error) {
 	claims := jwt.MapClaims{
-		"username": username,
-		"userID":   userID,
-		"exp":      time.Now().Add(time.Hour * 72).Unix(),
+		"userID": userID,
+		"exp":    time.Now().Add(time.Hour * 72).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(utils.SecretKey))

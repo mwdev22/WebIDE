@@ -25,9 +25,9 @@ func NewRepoController(r fiber.Router, userStore *storage.UserStore, repoStore *
 }
 
 func (ctr *RepoController) RegisterRoutes() {
-	ctr.r.Get("/new_repo", AuthMiddleware(ErrMiddleware(ctr.handleNewRepo)))
-	ctr.r.Get("/repo/<repo_id>", AuthMiddleware(ErrMiddleware(ctr.handleGetRepo)))
-	ctr.r.Get("/user_repos/<user_id>", AuthMiddleware(ErrMiddleware(ctr.handleGetUserRepos)))
+	ctr.r.Post("/new_repo", ErrMiddleware(AuthMiddleware((ctr.handleNewRepo))))
+	ctr.r.Get("/repo/:repo_id", ErrMiddleware(AuthMiddleware(ctr.handleGetRepo)))
+	ctr.r.Get("/user_repos/:user_id", ErrMiddleware(AuthMiddleware(ctr.handleGetUserRepos)))
 
 }
 
@@ -58,7 +58,7 @@ func (ctr *RepoController) handleNewRepo(c *fiber.Ctx) error {
 }
 
 func (ctr *RepoController) handleGetRepo(c *fiber.Ctx) error {
-	repoQ := c.Query("repo_id")
+	repoQ := c.Params("repo_id")
 	repoID, err := strconv.Atoi(repoQ)
 	if err != nil {
 		return BadQueryParameter("repo_id")
@@ -71,7 +71,7 @@ func (ctr *RepoController) handleGetRepo(c *fiber.Ctx) error {
 }
 
 func (ctr *RepoController) handleGetUserRepos(c *fiber.Ctx) error {
-	userQ := c.Query("user_id")
+	userQ := c.Params("user_id")
 	userID, err := strconv.Atoi(userQ)
 	if err != nil {
 		BadQueryParameter("user_id")
@@ -81,8 +81,10 @@ func (ctr *RepoController) handleGetUserRepos(c *fiber.Ctx) error {
 		return SQLError(err)
 	}
 
-	loggedInUserID := c.Locals("user_id").(uint)
-
+	loggedInUserID, ok := c.Locals("userID").(uint)
+	if !ok {
+		return Unauthorized("not logged in")
+	}
 	// return only private repos or all if the logged user is an owner
 	filteredRepos := []*storage.Repository{}
 	for _, repo := range userRepos {
