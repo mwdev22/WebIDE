@@ -26,6 +26,7 @@ func NewRepoController(r fiber.Router, userStore *storage.UserStore, repoStore *
 
 func (ctr *RepoController) RegisterRoutes() {
 	ctr.r.Get("/new_repo", AuthMiddleware(ErrMiddleware(ctr.handleNewRepo)))
+	ctr.r.Get("/repo/<repo_id>", AuthMiddleware(ErrMiddleware(ctr.handleGetRepo)))
 	ctr.r.Get("/user_repos/<user_id>", AuthMiddleware(ErrMiddleware(ctr.handleGetUserRepos)))
 
 }
@@ -54,6 +55,19 @@ func (ctr *RepoController) handleNewRepo(c *fiber.Ctx) error {
 		"repo_id": newRepoID,
 		"message": "Repository created successfully.",
 	})
+}
+
+func (ctr *RepoController) handleGetRepo(c *fiber.Ctx) error {
+	repoQ := c.Query("repo_id")
+	repoID, err := strconv.Atoi(repoQ)
+	if err != nil {
+		return BadQueryParameter("repo_id")
+	}
+	repo, err := ctr.repoStore.GetRepoByID(repoID)
+	if err != nil {
+		return NotFound(repoID, "Repository")
+	}
+	return c.Status(fiber.StatusOK).JSON(repo)
 }
 
 func (ctr *RepoController) handleGetUserRepos(c *fiber.Ctx) error {

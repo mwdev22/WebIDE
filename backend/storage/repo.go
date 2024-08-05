@@ -9,10 +9,11 @@ import (
 
 type Repository struct {
 	gorm.Model
-	Name    string
-	Private bool
-	UserID  uint
-	Files   []File
+	ID      int    `gorm:"primarykey"`
+	Name    string `json:"name"`
+	Private bool   `json:"private"`
+	UserID  uint   `json:"user_id"`
+	Files   []File `json:"files"`
 }
 
 type RepoStore struct {
@@ -44,7 +45,7 @@ func (s *RepoStore) GetReposByUserID(id int) ([]*Repository, error) {
 	return repos, nil
 }
 
-func (s *RepoStore) CreateRepo(data types.Repo) (uint, error) {
+func (s *RepoStore) CreateRepo(data types.Repo) (int, error) {
 	var repo = Repository{
 		Name:    data.Name,
 		Private: data.Private,

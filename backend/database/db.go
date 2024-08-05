@@ -32,4 +32,8 @@ func InitConn(db *gorm.DB) {
 	}
 }
 
-var models = []interface{}{&storage.User{}}
+var models = []interface{}{
+	&storage.User{},
+	&storage.File{},
+	&storage.Repository{},
+}

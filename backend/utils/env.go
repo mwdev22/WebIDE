@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -34,5 +33,4 @@ func LoadEnv() {
 	SecretKey = []byte(os.Getenv("SECRET_KEY"))
 	ClientID = os.Getenv("CLIENT_ID")
 	ClientSecret = os.Getenv("CLIENT_SECRET")
-	fmt.Println(SecretKey, ClientID, ClientSecret)
 }

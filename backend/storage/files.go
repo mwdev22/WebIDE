@@ -8,9 +8,10 @@ import (
 
 type File struct {
 	gorm.Model
-	Name         string
-	Content      string
-	RepositoryID int
+	ID           int    `gorm:"primarykey" json:"id"`
+	Name         string `json:"name"`
+	Content      string `json:"content"`
+	RepositoryID int    `json:"repository_id"`
 }
 
 type FileStore struct {

@@ -9,11 +9,11 @@ import (
 
 type User struct {
 	gorm.Model
-	ID           uint   `gorm:"primarykey"`
-	Username     string `gorm:"not null"`
-	Bio          string
-	GithubURL    string `gorm:"not null"`
-	Repositories []Repository
+	ID           uint         `gorm:"primarykey" json:"id"`
+	Username     string       `gorm:"not null" json:"username"`
+	Bio          string       `json:"bio"`
+	GithubURL    string       `gorm:"not null" json:"git_url"`
+	Repositories []Repository `json:"repositories"`
 }
 
 type UserStore struct {
