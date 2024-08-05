@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/mwdev22/WebIDE/backend/types"
 )
 
 type ApiError struct {
@@ -27,7 +28,7 @@ func InvalidJSON() ApiError {
 	return NewApiError(fiber.StatusUnprocessableEntity, fmt.Errorf("invalid json data"))
 }
 
-func BadQuery(err error) ApiError {
+func SQLError(err error) ApiError {
 	return NewApiError(fiber.StatusInternalServerError, err)
 }
 
@@ -36,5 +37,16 @@ func ExternalServiceErr(err error) ApiError {
 }
 
 func Unauthorized(msg any) ApiError {
-	return NewApiError(fiber.StatusUnauthorized, fmt.Errorf("Unauthorized, %s", msg))
+	return NewApiError(fiber.StatusUnauthorized, fmt.Errorf("unauthorized, %s", msg))
+}
+
+func BadQueryParameter(name string) ApiError {
+	return NewApiError(fiber.StatusBadRequest, fmt.Errorf("bad query param, %s", name))
+}
+
+func ValidationError(errors []*types.ErrorResponse) ApiError {
+	return ApiError{
+		StatusCode: fiber.StatusBadRequest,
+		Msg:        errors,
+	}
 }

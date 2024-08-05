@@ -27,12 +27,12 @@ func AuthMiddleware(handler FiberHandler) fiber.Handler {
 			return Unauthorized("invalid token")
 		}
 
-		username, ok := (*claims)["username"].(string)
+		userID, ok := (*claims)["userID"].(string)
 		if !ok {
 			return Unauthorized("invalid token claims")
 		}
 
-		c.Locals("username", username)
+		c.Locals("userID", userID)
 		return c.Next()
 	}
 }

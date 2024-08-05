@@ -78,7 +78,7 @@ func (ctr *AuthController) handleGitHubCallback(c *fiber.Ctx) error {
 	}
 
 	username := data["login"].(string)
-	githubID := uint64(data["id"].(float64))
+	githubID := uint(data["id"].(float64))
 	githubURL := data["url"].(string)
 
 	if user, err := ctr.userStore.GetUserByID(githubID); err != nil {
@@ -90,11 +90,11 @@ func (ctr *AuthController) handleGitHubCallback(c *fiber.Ctx) error {
 		}
 
 		if err := ctr.userStore.CreateUser(&newUser); err != nil {
-			return BadQuery(err)
+			return SQLError(err)
 		}
 	}
 
-	jwtToken, err := createJWT(username)
+	jwtToken, err := createJWT(username, githubID)
 	if err != nil {
 		return NewApiError(fiber.StatusBadRequest, err)
 	}
@@ -107,9 +107,10 @@ func (ctr *AuthController) handleGitHubCallback(c *fiber.Ctx) error {
 	})
 }
 
-func createJWT(username string) (string, error) {
+func createJWT(username string, userID uint) (string, error) {
 	claims := jwt.MapClaims{
 		"username": username,
+		"userID":   userID,
 		"exp":      time.Now().Add(time.Hour * 72).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

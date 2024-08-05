@@ -11,7 +11,7 @@ type Repository struct {
 	gorm.Model
 	Name    string
 	Private bool
-	UserID  int
+	UserID  uint
 	Files   []File
 }
 
@@ -33,22 +33,27 @@ func (s *RepoStore) GetRepoByID(id int) (*Repository, error) {
 	return &repo, nil
 }
 
-func (s *RepoStore) GetRepoByUserID(id int) (*Repository, error) {
-	var repo Repository
-	if err := s.db.Where("UserID = ?", id).First(&repo).Error; err != nil {
-		return nil, fmt.Errorf("failed to get file with id %v, %s", id, err)
+func (s *RepoStore) GetReposByUserID(id int) ([]*Repository, error) {
+	var repos []*Repository
+
+	// Fetch all repositories where UserID matches the given id
+	if err := s.db.Where("user_id = ?", id).Find(&repos).Error; err != nil {
+		return nil, fmt.Errorf("failed to get repositories for user_id %v: %s", id, err)
 	}
-	return &repo, nil
+
+	return repos, nil
 }
 
-func (s *RepoStore) CreateRepo(data types.Repo) error {
+func (s *RepoStore) CreateRepo(data types.Repo) (uint, error) {
 	var repo = Repository{
 		Name:    data.Name,
 		Private: data.Private,
 		UserID:  data.UserID,
 	}
+
 	if err := s.db.Create(&repo).Error; err != nil {
-		return err
+		return 0, err
 	}
-	return nil
+
+	return repo.ID, nil
 }

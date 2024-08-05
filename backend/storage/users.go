@@ -9,7 +9,7 @@ import (
 
 type User struct {
 	gorm.Model
-	ID           uint64 `gorm:"primarykey"`
+	ID           uint   `gorm:"primarykey"`
 	Username     string `gorm:"not null"`
 	Bio          string
 	GithubURL    string `gorm:"not null"`
@@ -34,7 +34,7 @@ func (s *UserStore) GetAllUsers() ([]User, error) {
 	return users, nil
 }
 
-func (s *UserStore) GetUserByID(id uint64) (*User, error) {
+func (s *UserStore) GetUserByID(id uint) (*User, error) {
 	var user User
 	if err := s.db.Where("ID = ?", id).First(&user).Error; err != nil {
 		return nil, fmt.Errorf("failed to get user with id %v, %s", id, err)
