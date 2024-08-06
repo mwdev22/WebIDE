@@ -86,7 +86,7 @@ func (ctr *AuthController) handleGitHubCallback(c *fiber.Ctx) error {
 
 	if user, err := ctr.userStore.GetUserByID(githubID); err != nil {
 		fmt.Printf("user not found, %v", user)
-		var newUser = types.User{
+		var newUser = types.UserPayload{
 			ID:        githubID,
 			GithubURL: githubURL,
 			Username:  username,
@@ -118,3 +118,4 @@ func createJWT(userID uint) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(utils.SecretKey))
 }
+gorm.Model

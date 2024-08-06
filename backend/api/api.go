@@ -32,10 +32,10 @@ func (s *Server) Run() error {
 	fileStore := storage.NewFileStore(s.db)
 
 	auth := handlers.NewAuthController(v1.Group("/auth"), userStore)
-	repo := handlers.NewRepoController(v1.Group("/repo"), userStore, repoStore, fileStore)
+	project := handlers.NewProjectController(v1.Group("/project"), userStore, repoStore, fileStore)
 
 	auth.RegisterRoutes()
-	repo.RegisterRoutes()
+	project.RegisterRoutes()
 
 	return app.Listen(s.addr)
 }

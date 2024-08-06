@@ -2,18 +2,24 @@ package storage
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/mwdev22/WebIDE/backend/types"
 	"gorm.io/gorm"
 )
 
 type User struct {
-	gorm.Model
+	BaseModel
 	ID           uint         `gorm:"primarykey" json:"id"`
 	Username     string       `gorm:"not null" json:"username"`
 	Bio          string       `json:"bio"`
 	GithubURL    string       `gorm:"not null" json:"git_url"`
 	Repositories []Repository `json:"repositories"`
+
+	// default fields display modifications
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"-"`
+	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 type UserStore struct {
@@ -42,7 +48,7 @@ func (s *UserStore) GetUserByID(id uint) (*User, error) {
 	return &user, nil
 }
 
-func (s *UserStore) CreateUser(data *types.User) error {
+func (s *UserStore) CreateUser(data *types.UserPayload) error {
 	var newUser = User{
 		ID:        data.ID,
 		Username:  data.Username,

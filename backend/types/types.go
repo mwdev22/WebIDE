@@ -2,19 +2,25 @@ package types
 
 import "github.com/go-playground/validator/v10"
 
-type User struct {
+type UserPayload struct {
 	ID        uint   `json:"id" validate:"required"`
 	Username  string `json:"username" validate:"required"`
 	GithubURL string `json:"git_url" validate:"required"`
 }
 
-type Repo struct {
+type RepoPayload struct {
 	Name    string `json:"name" validate:"required"`
 	Private bool   `json:"private" validate:"required"`
 	UserID  uint   `json:"user_id" validate:"required"`
 }
 
-type File struct {
+type UpdateRepoPayload struct {
+	Name    string `json:"name" validate:"required"`
+	Readme  string `json:"readme"`
+	Private bool   `json:"private" validate:"required"`
+}
+
+type FilePayload struct {
 	Name         string `json:"name" validate:"required"`
 	Content      string `json:"content" validate:"required"`
 	RepositoryID int    `json:"repo_id" validate:"required"`

@@ -1,22 +1,24 @@
 package handlers
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/mwdev22/WebIDE/backend/storage"
 	"github.com/mwdev22/WebIDE/backend/types"
+	"github.com/mwdev22/WebIDE/backend/utils"
 )
 
-type RepoController struct {
+type ProjectController struct {
 	r         fiber.Router
 	userStore *storage.UserStore
 	repoStore *storage.RepoStore
 	fileStore *storage.FileStore
 }
 
-func NewRepoController(r fiber.Router, userStore *storage.UserStore, repoStore *storage.RepoStore, fileStore *storage.FileStore) *RepoController {
-	return &RepoController{
+func NewProjectController(r fiber.Router, userStore *storage.UserStore, repoStore *storage.RepoStore, fileStore *storage.FileStore) *ProjectController {
+	return &ProjectController{
 		r:         r,
 		userStore: userStore,
 		repoStore: repoStore,
@@ -24,16 +26,18 @@ func NewRepoController(r fiber.Router, userStore *storage.UserStore, repoStore *
 	}
 }
 
-func (ctr *RepoController) RegisterRoutes() {
-	ctr.r.Post("/new_repo", ErrMiddleware(AuthMiddleware((ctr.handleNewRepo))))
+func (ctr *ProjectController) RegisterRoutes() {
 	ctr.r.Get("/repo/:repo_id", ErrMiddleware(AuthMiddleware(ctr.handleGetRepo)))
 	ctr.r.Get("/user_repos/:user_id", ErrMiddleware(AuthMiddleware(ctr.handleGetUserRepos)))
 
+	ctr.r.Post("/new_repo", ErrMiddleware(AuthMiddleware((ctr.handleNewRepo))))
+
+	ctr.r.Patch("/repo/:repo_id", ErrMiddleware(AuthMiddleware(ctr.handleUpdateRepo)))
 }
 
-func (ctr *RepoController) handleNewRepo(c *fiber.Ctx) error {
+func (ctr *ProjectController) handleNewRepo(c *fiber.Ctx) error {
 
-	var repo types.Repo
+	var repo types.RepoPayload
 
 	if err := c.BodyParser(&repo); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -57,7 +61,7 @@ func (ctr *RepoController) handleNewRepo(c *fiber.Ctx) error {
 	})
 }
 
-func (ctr *RepoController) handleGetRepo(c *fiber.Ctx) error {
+func (ctr *ProjectController) handleGetRepo(c *fiber.Ctx) error {
 	repoQ := c.Params("repo_id")
 	repoID, err := strconv.Atoi(repoQ)
 	if err != nil {
@@ -70,7 +74,53 @@ func (ctr *RepoController) handleGetRepo(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(repo)
 }
 
-func (ctr *RepoController) handleGetUserRepos(c *fiber.Ctx) error {
+func (ctr *ProjectController) handleUpdateRepo(c *fiber.Ctx) error {
+
+	var updatedRepo types.UpdateRepoPayload
+
+	if err := c.BodyParser(&updatedRepo); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Failed to parse request body.",
+			"error":   err.Error(),
+		})
+	}
+
+	loggedUserID, ok := c.Locals("userID").(uint)
+	if !ok {
+		return Unauthorized("not logged in")
+	}
+
+	repoID, err := strconv.Atoi(c.Params("repo_id"))
+	if err != nil {
+		return BadQueryParameter("repo_id")
+	}
+
+	repo, err := ctr.repoStore.GetRepoByID(repoID)
+	if err != nil {
+		return NotFound(repoID, "Repository")
+	}
+
+	if loggedUserID != repo.UserID {
+		return Unauthorized(fmt.Sprintf("User with ID %v is not the owner of repo with ID %v", loggedUserID, repoID))
+	}
+
+	if err = utils.CheckAndUpdate(updatedRepo, &repo); err != nil {
+		return NewApiError(fiber.StatusBadGateway, err)
+	}
+
+	// Save the updated repository to the database
+	if err := ctr.repoStore.UpdateRepo(repo); err != nil {
+		return SQLError(err)
+	}
+
+	// Return the updated repository
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "Repository updated successfully",
+		"repo":    repo,
+	})
+}
+
+func (ctr *ProjectController) handleGetUserRepos(c *fiber.Ctx) error {
 	userQ := c.Params("user_id")
 	userID, err := strconv.Atoi(userQ)
 	if err != nil {

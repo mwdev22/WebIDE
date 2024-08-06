@@ -2,16 +2,21 @@ package storage
 
 import (
 	"fmt"
+	"time"
 
 	"gorm.io/gorm"
 )
 
 type File struct {
-	gorm.Model
-	ID           int    `gorm:"primarykey" json:"id"`
+	BaseModel
 	Name         string `json:"name"`
 	Content      string `json:"content"`
 	RepositoryID int    `json:"repository_id"`
+
+	// default fields display modifications
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"-"`
+	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 type FileStore struct {
