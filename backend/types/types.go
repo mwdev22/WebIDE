@@ -24,6 +24,13 @@ type FilePayload struct {
 	Name         string `json:"name" validate:"required"`
 	Content      string `json:"content" validate:"required"`
 	RepositoryID int    `json:"repo_id" validate:"required"`
+	Extension    string `json:"extension"`
+	RunCmd       string `json:"run_cmd"`
+}
+
+type UpdateFilePayload struct {
+	Name    string `json:"name" validate:"required"`
+	Content string `json:"content" validate:"required"`
 }
 
 var validate = validator.New()

@@ -52,5 +52,5 @@ func ValidationError(errors []*types.ErrorResponse) ApiError {
 }
 
 func NotFound(id int, name string) ApiError {
-	return NewApiError(fiber.StatusNotFound, fmt.Errorf("%s with %v not found in database", name, id))
+	return NewApiError(fiber.StatusNotFound, fmt.Errorf("%s with id %v not found in database", name, id))
 }

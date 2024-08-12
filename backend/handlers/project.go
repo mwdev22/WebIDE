@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -27,12 +28,21 @@ func NewProjectController(r fiber.Router, userStore *storage.UserStore, repoStor
 }
 
 func (ctr *ProjectController) RegisterRoutes() {
+	// REPO ENDPOINTS
 	ctr.r.Get("/repo/:repo_id", ErrMiddleware(AuthMiddleware(ctr.handleGetRepo)))
 	ctr.r.Get("/user_repos/:user_id", ErrMiddleware(AuthMiddleware(ctr.handleGetUserRepos)))
 
 	ctr.r.Post("/new_repo", ErrMiddleware(AuthMiddleware((ctr.handleNewRepo))))
 
-	ctr.r.Patch("/repo/:repo_id", ErrMiddleware(AuthMiddleware(ctr.handleUpdateRepo)))
+	ctr.r.Put("/repo/:repo_id", ErrMiddleware(AuthMiddleware(ctr.handleUpdateRepo)))
+
+	// FILE ENDPOINTS
+	ctr.r.Get("/file/:file_id", ErrMiddleware(AuthMiddleware(ctr.handleGetFile)))
+
+	ctr.r.Post("/new_file", ErrMiddleware(AuthMiddleware(ctr.handleNewFile)))
+
+	ctr.r.Put("/file/:file_id", ErrMiddleware(AuthMiddleware(ctr.handleUpdateFile)))
+
 }
 
 func (ctr *ProjectController) handleNewRepo(c *fiber.Ctx) error {
@@ -40,10 +50,7 @@ func (ctr *ProjectController) handleNewRepo(c *fiber.Ctx) error {
 	var repo types.RepoPayload
 
 	if err := c.BodyParser(&repo); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "Failed to parse request body.",
-			"error":   err.Error(),
-		})
+		return InvalidJSON()
 	}
 
 	validationErrors := types.ValidateStruct(repo)
@@ -55,8 +62,8 @@ func (ctr *ProjectController) handleNewRepo(c *fiber.Ctx) error {
 	if err != nil {
 		return SQLError(err)
 	}
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"repo_id": newRepoID,
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"id":      newRepoID,
 		"message": "Repository created successfully.",
 	})
 }
@@ -71,7 +78,7 @@ func (ctr *ProjectController) handleGetRepo(c *fiber.Ctx) error {
 	if err != nil {
 		return NotFound(repoID, "Repository")
 	}
-	return c.Status(fiber.StatusOK).JSON(repo)
+	return c.JSON(repo)
 }
 
 func (ctr *ProjectController) handleUpdateRepo(c *fiber.Ctx) error {
@@ -79,10 +86,7 @@ func (ctr *ProjectController) handleUpdateRepo(c *fiber.Ctx) error {
 	var updatedRepo types.UpdateRepoPayload
 
 	if err := c.BodyParser(&updatedRepo); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "Failed to parse request body.",
-			"error":   err.Error(),
-		})
+		return InvalidJSON()
 	}
 
 	loggedUserID, ok := c.Locals("userID").(uint)
@@ -108,12 +112,12 @@ func (ctr *ProjectController) handleUpdateRepo(c *fiber.Ctx) error {
 		return NewApiError(fiber.StatusBadGateway, err)
 	}
 
-	// Save the updated repository to the database
+	// save the updated repository to the database
 	if err := ctr.repoStore.UpdateRepo(repo); err != nil {
 		return SQLError(err)
 	}
 
-	// Return the updated repository
+	// return the updated repository
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "Repository updated successfully",
 		"repo":    repo,
@@ -146,5 +150,104 @@ func (ctr *ProjectController) handleGetUserRepos(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"user_id": userID,
 		"repos":   filteredRepos,
+	})
+}
+
+func (ctr *ProjectController) handleNewFile(c *fiber.Ctx) error {
+	var file types.FilePayload
+	if err := c.BodyParser(&file); err != nil {
+		return InvalidJSON()
+	}
+
+	validationErrors := types.ValidateStruct(file)
+	if len(validationErrors) > 0 {
+		ValidationError(validationErrors)
+	}
+
+	_, err := ctr.repoStore.GetRepoByID(file.RepositoryID)
+	if err != nil {
+		return NotFound(file.RepositoryID, "Repo")
+	}
+
+	extension := filepath.Ext(file.Name)
+	file.Extension = extension
+	runCmd := utils.GetRunCmd(extension)
+	if runCmd != "" {
+		file.RunCmd = runCmd + " " + file.Name // for example g++ main.cpp
+	}
+
+	newFileID, err := ctr.fileStore.CreateFile(file)
+	if err != nil {
+		return SQLError(err)
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"id":      newFileID,
+		"message": "File created successfully!",
+	})
+}
+
+func (ctr *ProjectController) handleGetFile(c *fiber.Ctx) error {
+	fileQ := c.Params("file_id")
+	fileID, err := strconv.Atoi(fileQ)
+	if err != nil {
+		return BadQueryParameter("file_id")
+	}
+	file, err := ctr.fileStore.GetFileByID(fileID)
+	if err != nil {
+		return NotFound(fileID, "File")
+	}
+
+	return c.JSON(file)
+
+}
+
+func (ctr *ProjectController) handleUpdateFile(c *fiber.Ctx) error {
+	var updatedFile types.UpdateFilePayload
+
+	if err := c.BodyParser(&updatedFile); err != nil {
+		return InvalidJSON()
+	}
+
+	loggedUserID, ok := c.Locals("userID").(uint)
+	if !ok {
+		return Unauthorized("not logged in")
+	}
+
+	fileID, err := strconv.Atoi(c.Params("file_id"))
+	if err != nil {
+		return BadQueryParameter("file_id")
+	}
+
+	file, err := ctr.fileStore.GetFileByID(fileID)
+	if err != nil {
+		return NotFound(fileID, "File")
+	}
+
+	repo, err := ctr.repoStore.GetRepoByID(file.RepositoryID)
+	if err != nil {
+		return NotFound(int(repo.ID), "File")
+	}
+
+	if loggedUserID != repo.UserID {
+		return Unauthorized(fmt.Sprintf("User with ID %v is not the owner of repo with ID %v", loggedUserID, fileID))
+	}
+
+	if updatedFile.Name != "" && updatedFile.Name != file.Name {
+		extension := filepath.Ext(file.Name)
+		file.Extension = extension
+		file.Name = updatedFile.Name
+		runCmd := utils.GetRunCmd(extension)
+		if runCmd != "" {
+			file.RunCmd = runCmd + " " + file.Name
+		}
+	}
+	if updatedFile.Content != "" && updatedFile.Content != file.Content {
+		file.Content = updatedFile.Content
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "File updated successfully",
+		"file":    file,
 	})
 }

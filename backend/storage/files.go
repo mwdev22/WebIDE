@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mwdev22/WebIDE/backend/types"
 	"gorm.io/gorm"
 )
 
@@ -11,7 +12,9 @@ type File struct {
 	BaseModel
 	Name         string `json:"name"`
 	Content      string `json:"content"`
+	Extension    string `json:"extension"`
 	RepositoryID int    `json:"repository_id"`
+	RunCmd       string `json:"run_cmd"`
 
 	// default fields display modifications
 	CreatedAt time.Time      `json:"created_at"`
@@ -35,4 +38,22 @@ func (s *FileStore) GetFileByID(id int) (*File, error) {
 		return nil, fmt.Errorf("failed to get file with id %v, %s", id, err)
 	}
 	return &file, nil
+}
+
+func (s *FileStore) CreateFile(data types.FilePayload) (uint, error) {
+	var file = File{
+		Name:         data.Name,
+		Content:      data.Content,
+		RepositoryID: data.RepositoryID,
+	}
+
+	if err := s.db.Create(&file).Error; err != nil {
+		return 0, err
+	}
+
+	return file.ID, nil
+}
+
+func (s *FileStore) UpdateFile(file *File) error {
+	return s.db.Save(file).Error
 }

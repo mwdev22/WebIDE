@@ -5,6 +5,13 @@ import (
 	"reflect"
 )
 
+var LanguageMap = map[string]string{
+	"cpp": "g++",
+	"py":  "python3",
+	"go":  "go",
+	"sh":  "./",
+}
+
 func CheckAndUpdate[T any, G any](payload T, entity *G) error {
 	payloadValue := reflect.ValueOf(payload)
 	entityValue := reflect.ValueOf(entity).Elem()
@@ -25,4 +32,11 @@ func CheckAndUpdate[T any, G any](payload T, entity *G) error {
 		}
 	}
 	return nil
+}
+
+func GetRunCmd(extName string) string {
+	if cmd, exists := LanguageMap[extName]; exists {
+		return cmd
+	}
+	return ""
 }
