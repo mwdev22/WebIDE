@@ -31,6 +31,7 @@ func (ctr *ProjectController) RegisterRoutes() {
 	// REPO ENDPOINTS
 	ctr.r.Get("/repo/:repo_id", ErrMiddleware(AuthMiddleware(ctr.handleGetRepo)))
 	ctr.r.Get("/user_repos/:user_id", ErrMiddleware(AuthMiddleware(ctr.handleGetUserRepos)))
+	ctr.r.Get("/repo_files/:repo_id", ErrMiddleware(AuthMiddleware(ctr.handleGetRepoFiles)))
 
 	ctr.r.Post("/new_repo", ErrMiddleware(AuthMiddleware((ctr.handleNewRepo))))
 
@@ -40,6 +41,7 @@ func (ctr *ProjectController) RegisterRoutes() {
 	ctr.r.Get("/file/:file_id", ErrMiddleware(AuthMiddleware(ctr.handleGetFile)))
 
 	ctr.r.Post("/new_file", ErrMiddleware(AuthMiddleware(ctr.handleNewFile)))
+	ctr.r.Post("/run_code", ErrMiddleware(AuthMiddleware(ctr.handleRunFileCode)))
 
 	ctr.r.Put("/file/:file_id", ErrMiddleware(AuthMiddleware(ctr.handleUpdateFile)))
 
@@ -250,4 +252,29 @@ func (ctr *ProjectController) handleUpdateFile(c *fiber.Ctx) error {
 		"message": "File updated successfully",
 		"file":    file,
 	})
+}
+
+func (ctr *ProjectController) handleGetRepoFiles(c *fiber.Ctx) error {
+	repoQ := c.Params("repo_id")
+	repoID, err := strconv.Atoi(repoQ)
+	if err != nil {
+		return BadQueryParameter("repo_id")
+	}
+	repo, err := ctr.repoStore.GetRepoByID(repoID)
+	if err != nil {
+		return SQLError(err)
+	}
+	files, err := ctr.fileStore.GetFilesByRepoID(repo.ID)
+	if err != nil {
+		SQLError(err)
+	}
+
+	return c.JSON(fiber.Map{
+		"repo_id": repoID,
+		"files":   files,
+	})
+}
+
+func (ctr *ProjectController) handleRunFileCode(c *fiber.Ctx) error {
+	return c.JSON(fiber.Map{})
 }

@@ -57,3 +57,11 @@ func (s *FileStore) CreateFile(data types.FilePayload) (uint, error) {
 func (s *FileStore) UpdateFile(file *File) error {
 	return s.db.Save(file).Error
 }
+
+func (s *FileStore) GetFilesByRepoID(id uint) ([]File, error) {
+	var files []File
+	if err := s.db.Where("repository_id = ?", id).Find(&files).Error; err != nil {
+		return nil, fmt.Errorf("failed to get files for repository id %v, %s", id, err)
+	}
+	return files, nil
+}

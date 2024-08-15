@@ -9,7 +9,6 @@ import (
 
 type Repository struct {
 	BaseModel
-	ID      uint   `gorm:"primarykey" json:"id"`
 	Name    string `json:"name"`
 	Private bool   `json:"private"`
 	Readme  string `json:"readme"`
