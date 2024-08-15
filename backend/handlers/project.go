@@ -239,10 +239,7 @@ func (ctr *ProjectController) handleUpdateFile(c *fiber.Ctx) error {
 		extension := filepath.Ext(file.Name)
 		file.Extension = extension
 		file.Name = updatedFile.Name
-		runCmd := utils.GetRunCmd(extension)
-		if runCmd != "" {
-			file.RunCmd = runCmd + " " + file.Name
-		}
+
 	}
 	if updatedFile.Content != "" && updatedFile.Content != file.Content {
 		file.Content = updatedFile.Content

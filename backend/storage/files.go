@@ -14,7 +14,6 @@ type File struct {
 	Content      string `json:"content"`
 	Extension    string `json:"extension"`
 	RepositoryID int    `json:"repository_id"`
-	RunCmd       string `json:"run_cmd"`
 
 	// default fields display modifications
 	CreatedAt time.Time      `json:"created_at"`
