@@ -34,18 +34,20 @@ func (ctr *ProjectController) RegisterRoutes() {
 	ctr.r.Get("/repo_files/:repo_id", ErrMiddleware(AuthMiddleware(ctr.handleGetRepoFiles)))
 
 	ctr.r.Post("/new_repo", ErrMiddleware(AuthMiddleware((ctr.handleNewRepo))))
-
 	ctr.r.Put("/repo/:repo_id", ErrMiddleware(AuthMiddleware(ctr.handleUpdateRepo)))
+	ctr.r.Delete("/repo/:repo_id", ErrMiddleware(AuthMiddleware(ctr.handleDeleteRepo)))
 
 	// FILE ENDPOINTS
 	ctr.r.Get("/file/:file_id", ErrMiddleware(AuthMiddleware(ctr.handleGetFile)))
 
 	ctr.r.Post("/new_file", ErrMiddleware(AuthMiddleware(ctr.handleNewFile)))
-	ctr.r.Post("/run_code", ErrMiddleware(AuthMiddleware(ctr.handleRunFileCode)))
+	ctr.r.Post("/run_code/:file_id", ErrMiddleware(AuthMiddleware(ctr.handleRunFileCode)))
 
 	ctr.r.Put("/file/:file_id", ErrMiddleware(AuthMiddleware(ctr.handleUpdateFile)))
 
 }
+
+// 		REPOS
 
 func (ctr *ProjectController) handleNewRepo(c *fiber.Ctx) error {
 
@@ -126,6 +128,15 @@ func (ctr *ProjectController) handleUpdateRepo(c *fiber.Ctx) error {
 	})
 }
 
+func (ctr *ProjectController) handleDeleteRepo(c *fiber.Ctx) error {
+	repoQ := c.Params("repo_id")
+	repoID, err := strconv.Atoi(repoQ)
+	if err != nil {
+		return BadQueryParameter("repo_id")
+	}
+	err := ctr.repoStore.DeleteRepoByID(repoID)
+}
+
 func (ctr *ProjectController) handleGetUserRepos(c *fiber.Ctx) error {
 	userQ := c.Params("user_id")
 	userID, err := strconv.Atoi(userQ)
@@ -154,6 +165,8 @@ func (ctr *ProjectController) handleGetUserRepos(c *fiber.Ctx) error {
 		"repos":   filteredRepos,
 	})
 }
+
+// 		FILES
 
 func (ctr *ProjectController) handleNewFile(c *fiber.Ctx) error {
 	var file types.FilePayload
@@ -251,6 +264,8 @@ func (ctr *ProjectController) handleUpdateFile(c *fiber.Ctx) error {
 	})
 }
 
+// 		COMBINED
+
 func (ctr *ProjectController) handleGetRepoFiles(c *fiber.Ctx) error {
 	repoQ := c.Params("repo_id")
 	repoID, err := strconv.Atoi(repoQ)
@@ -273,5 +288,24 @@ func (ctr *ProjectController) handleGetRepoFiles(c *fiber.Ctx) error {
 }
 
 func (ctr *ProjectController) handleRunFileCode(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{})
+
+	fileID, err := strconv.Atoi(c.Params("file_id"))
+	if err != nil {
+		return BadQueryParameter("file_id")
+	}
+
+	file, err := ctr.fileStore.GetFileByID(fileID)
+	if err != nil {
+		return NotFound(fileID, "file")
+	}
+
+	fileOutput, err := utils.RunCode(file)
+	if err != nil {
+		return NewApiError(fiber.StatusBadRequest, err)
+	}
+
+	return c.JSON(fiber.Map{
+		"file_id": file.ID,
+		"output":  fileOutput,
+	})
 }
