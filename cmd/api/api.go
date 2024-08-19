@@ -5,6 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/websocket/v2"
 	"github.com/mwdev22/WebIDE/cmd/handlers"
 	"github.com/mwdev22/WebIDE/cmd/storage"
 	"gorm.io/gorm"
@@ -45,6 +46,11 @@ func (s *Server) Run() error {
 
 	auth.RegisterRoutes()
 	project.RegisterRoutes()
+
+	// websocket for colaborating with other users
+	app.Get("/ws/:fileId", websocket.New(func(c *websocket.Conn) {
+		handlers.HandleWebSocketConnection(c)
+	}))
 
 	return app.Listen(s.addr)
 }
