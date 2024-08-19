@@ -1,7 +1,10 @@
 package api
 
 import (
+	"os"
+
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/mwdev22/WebIDE/backend/handlers"
 	"github.com/mwdev22/WebIDE/backend/storage"
 	"gorm.io/gorm"
@@ -25,6 +28,12 @@ func (s *Server) Run() error {
 	app := fiber.New()
 	api := app.Group("/api")
 	v1 := api.Group("/v1")
+	app.Use(logger.New(logger.Config{
+		Output:     os.Stdout,
+		Format:     "${time} ${ip} ${status} - ${method} ${path}\n",
+		TimeFormat: "31-02-2006 15:04:05",
+		TimeZone:   "Europe/Warsaw",
+	}))
 
 	// storages
 	userStore := storage.NewUserStore(s.db)
@@ -32,7 +41,7 @@ func (s *Server) Run() error {
 	fileStore := storage.NewFileStore(s.db)
 
 	auth := handlers.NewAuthController(v1.Group("/auth"), userStore)
-	project := handlers.NewProjectController(v1.Group("/project"), userStore, repoStore, fileStore)
+	project := handlers.NewProjectController(v1, userStore, repoStore, fileStore)
 
 	auth.RegisterRoutes()
 	project.RegisterRoutes()

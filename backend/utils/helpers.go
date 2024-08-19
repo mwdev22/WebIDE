@@ -17,6 +17,11 @@ var languageMap = map[string]string{
 	"sh":  "./",
 }
 
+var formatterMap = map[string]string{
+	"go": "gofmt",
+	"py": "black",
+}
+
 type ProgramResult string
 
 func CheckAndUpdate[T any, G any](payload T, entity *G) error {
@@ -46,6 +51,33 @@ func GetRunCmd(extName string) string {
 		return cmd
 	}
 	return ""
+}
+
+func FormatCode(file *storage.File) error {
+	formatter, exists := formatterMap[file.Extension]
+	if !exists {
+		return nil
+	}
+
+	tempDir, err := os.MkdirTemp("", "code_format")
+	if err != nil {
+		return fmt.Errorf("failed to create temp directory: %s", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	tempFilePath := filepath.Join(tempDir, file.Name+"."+file.Extension)
+	if err := os.WriteFile(tempFilePath, []byte(file.Content), 0644); err != nil {
+		return fmt.Errorf("failed to write temp file: %s", err)
+	}
+
+	cmd := exec.Command(formatter, tempFilePath)
+	formattedOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to format code: %v\nOutput: %s", err, formattedOutput)
+	}
+
+	file.Content = string(formattedOutput)
+	return nil
 }
 
 func RunCode(file *storage.File) (ProgramResult, error) {

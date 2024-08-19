@@ -2,7 +2,6 @@ package storage
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/mwdev22/WebIDE/backend/types"
 	"gorm.io/gorm"
@@ -10,16 +9,11 @@ import (
 
 type User struct {
 	BaseModel
-	ID           uint         `gorm:"primarykey" json:"id"`
+	ID           uint         `gorm:"primary_key" json:"id"`
 	Username     string       `gorm:"not null" json:"username"`
 	Bio          string       `json:"bio"`
 	GithubURL    string       `gorm:"not null" json:"git_url"`
-	Repositories []Repository `json:"repositories"`
-
-	// default fields display modifications
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"-"`
-	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
+	Repositories []Repository `gorm:"foreignKey:OwnerID" json:"repositories"`
 }
 
 type UserStore struct {

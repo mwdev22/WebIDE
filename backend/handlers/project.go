@@ -33,16 +33,15 @@ func (ctr *ProjectController) RegisterRoutes() {
 	ctr.r.Get("/user_repos/:user_id", ErrMiddleware(AuthMiddleware(ctr.handleGetUserRepos)))
 	ctr.r.Get("/repo_files/:repo_id", ErrMiddleware(AuthMiddleware(ctr.handleGetRepoFiles)))
 
-	ctr.r.Post("/new_repo", ErrMiddleware(AuthMiddleware((ctr.handleNewRepo))))
+	ctr.r.Post("/repo/new_repo", ErrMiddleware(AuthMiddleware((ctr.handleNewRepo))))
 	ctr.r.Put("/repo/:repo_id", ErrMiddleware(AuthMiddleware(ctr.handleUpdateRepo)))
 	ctr.r.Delete("/repo/:repo_id", ErrMiddleware(AuthMiddleware(ctr.handleDeleteRepo)))
 
 	// FILE ENDPOINTS
 	ctr.r.Get("/file/:file_id", ErrMiddleware(AuthMiddleware(ctr.handleGetFile)))
 
-	ctr.r.Post("/new_file", ErrMiddleware(AuthMiddleware(ctr.handleNewFile)))
+	ctr.r.Post("/file/new_file", ErrMiddleware(AuthMiddleware(ctr.handleNewFile)))
 	ctr.r.Post("/run_code/:file_id", ErrMiddleware(AuthMiddleware(ctr.handleRunFileCode)))
-
 	ctr.r.Put("/file/:file_id", ErrMiddleware(AuthMiddleware(ctr.handleUpdateFile)))
 
 }
@@ -108,12 +107,18 @@ func (ctr *ProjectController) handleUpdateRepo(c *fiber.Ctx) error {
 		return NotFound(repoID, "Repository")
 	}
 
-	if loggedUserID != repo.UserID {
+	if loggedUserID != repo.OwnerID {
 		return Unauthorized(fmt.Sprintf("User with ID %v is not the owner of repo with ID %v", loggedUserID, repoID))
 	}
 
-	if err = utils.CheckAndUpdate(updatedRepo, &repo); err != nil {
-		return NewApiError(fiber.StatusBadGateway, err)
+	if updatedRepo.Private && updatedRepo.Private != repo.Private {
+		repo.Private = updatedRepo.Private
+	}
+	if updatedRepo.Name != "" && updatedRepo.Name != repo.Name {
+		repo.Name = updatedRepo.Name
+	}
+	if updatedRepo.Readme != "" && updatedRepo.Readme != repo.Readme {
+		repo.Readme = updatedRepo.Readme
 	}
 
 	// save the updated repository to the database
@@ -134,7 +139,8 @@ func (ctr *ProjectController) handleDeleteRepo(c *fiber.Ctx) error {
 	if err != nil {
 		return BadQueryParameter("repo_id")
 	}
-	err := ctr.repoStore.DeleteRepoByID(repoID)
+	// err := ctr.repoStore.DeleteRepoByID(repoID)
+	return c.JSON(fiber.Map{"id": repoID})
 }
 
 func (ctr *ProjectController) handleGetUserRepos(c *fiber.Ctx) error {
@@ -155,7 +161,7 @@ func (ctr *ProjectController) handleGetUserRepos(c *fiber.Ctx) error {
 	// return only private repos or all if the logged user is an owner
 	filteredRepos := []*storage.Repository{}
 	for _, repo := range userRepos {
-		if !repo.Private || repo.UserID == loggedInUserID {
+		if !repo.Private || repo.OwnerID == loggedInUserID {
 			filteredRepos = append(filteredRepos, repo)
 		}
 	}
@@ -185,7 +191,7 @@ func (ctr *ProjectController) handleNewFile(c *fiber.Ctx) error {
 	}
 
 	extension := filepath.Ext(file.Name)
-	file.Extension = extension
+	file.Extension = extension[1:] // removing the .
 	runCmd := utils.GetRunCmd(extension)
 	if runCmd != "" {
 		file.RunCmd = runCmd + " " + file.Name // for example g++ main.cpp
@@ -244,18 +250,22 @@ func (ctr *ProjectController) handleUpdateFile(c *fiber.Ctx) error {
 		return NotFound(int(repo.ID), "File")
 	}
 
-	if loggedUserID != repo.UserID {
+	if loggedUserID != repo.OwnerID {
 		return Unauthorized(fmt.Sprintf("User with ID %v is not the owner of repo with ID %v", loggedUserID, fileID))
 	}
 
 	if updatedFile.Name != "" && updatedFile.Name != file.Name {
 		extension := filepath.Ext(file.Name)
-		file.Extension = extension
+		file.Extension = extension[1:]
 		file.Name = updatedFile.Name
 
 	}
 	if updatedFile.Content != "" && updatedFile.Content != file.Content {
 		file.Content = updatedFile.Content
+	}
+
+	if err = ctr.fileStore.UpdateFile(file); err != nil {
+		return SQLError(err)
 	}
 
 	return c.JSON(fiber.Map{
