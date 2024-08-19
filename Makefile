@@ -1,7 +1,7 @@
 # Project variables
 PROJECT_NAME := WebIDE
 PKG := ./...
-MAIN := ./backend/main.go
+MAIN := ./cmd/main.go
 
 # Go commands
 BUILD := go build

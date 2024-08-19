@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/mwdev22/WebIDE/backend/types"
+	"github.com/mwdev22/WebIDE/cmd/types"
 )
 
 type ApiError struct {

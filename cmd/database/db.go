@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/mwdev22/WebIDE/backend/storage"
+	"github.com/mwdev22/WebIDE/cmd/storage"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )

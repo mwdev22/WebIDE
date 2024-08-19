@@ -3,7 +3,7 @@ package storage
 import (
 	"fmt"
 
-	"github.com/mwdev22/WebIDE/backend/types"
+	"github.com/mwdev22/WebIDE/cmd/types"
 	"gorm.io/gorm"
 )
 

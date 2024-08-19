@@ -9,9 +9,9 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
-	"github.com/mwdev22/WebIDE/backend/storage"
-	"github.com/mwdev22/WebIDE/backend/types"
-	"github.com/mwdev22/WebIDE/backend/utils"
+	"github.com/mwdev22/WebIDE/cmd/storage"
+	"github.com/mwdev22/WebIDE/cmd/types"
+	"github.com/mwdev22/WebIDE/cmd/utils"
 	"golang.org/x/oauth2"
 )
 

@@ -5,8 +5,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
-	"github.com/mwdev22/WebIDE/backend/handlers"
-	"github.com/mwdev22/WebIDE/backend/storage"
+	"github.com/mwdev22/WebIDE/cmd/handlers"
+	"github.com/mwdev22/WebIDE/cmd/storage"
 	"gorm.io/gorm"
 )
 
