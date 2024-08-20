@@ -14,7 +14,7 @@ import (
 var languageMap = map[string]string{
 	"cpp": "g++",
 	"py":  "python3",
-	"go":  "go run",
+	"go":  "go",
 	"sh":  "./",
 }
 
@@ -23,7 +23,7 @@ var formatterMap = map[string]string{
 	"py": "black",
 }
 
-var tempDir string = getFileDir("tmp")
+var TempDir string = getFileDir("tmp")
 
 type ProgramResult string
 
@@ -67,13 +67,12 @@ func FormatCode(file *storage.File) error {
 		return nil
 	}
 
-	tempDir, err := os.MkdirTemp("", "code_format")
+	TempDir, err := os.MkdirTemp("", "code_format")
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory: %s", err)
 	}
-	defer os.RemoveAll(tempDir)
 
-	tempFilePath := filepath.Join(tempDir, file.Name)
+	tempFilePath := filepath.Join(TempDir, file.Name)
 	if err := os.WriteFile(tempFilePath, []byte(file.Content), 0644); err != nil {
 		return fmt.Errorf("failed to write temp file: %s", err)
 	}
@@ -90,8 +89,8 @@ func FormatCode(file *storage.File) error {
 
 func RunCode(file *storage.File) (ProgramResult, error) {
 
-	tempFilePath := filepath.Join(tempDir, file.Name)
-
+	tempFilePath := filepath.Join(TempDir, file.Name)
+	defer os.Remove(tempFilePath)
 	if err := os.WriteFile(tempFilePath, []byte(file.Content), 0644); err != nil {
 		return "", fmt.Errorf("failed to write temp file: %s", err)
 	}
@@ -107,7 +106,7 @@ func RunCode(file *storage.File) (ProgramResult, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to compile C++ code: %v\nOutput: %s", err, output)
 		}
-		binFilePath := filepath.Join(tempDir, file.Name+".exe")
+		binFilePath := filepath.Join(TempDir, file.Name+".exe")
 		runBinFile := exec.Command(binFilePath)
 		res, err = runBinFile.CombinedOutput()
 		if err != nil {
@@ -138,8 +137,8 @@ func RunCode(file *storage.File) (ProgramResult, error) {
 	case "go":
 		cmdStr := languageMap[file.Extension]
 		fmt.Println(cmdStr, tempFilePath)
-		cmd := exec.Command(cmdStr, tempFilePath)
-		fmt.Println(cmd)
+
+		cmd := exec.Command(cmdStr, "run", tempFilePath)
 		res, err = cmd.CombinedOutput()
 		if err != nil {
 			return "", fmt.Errorf("failed to run code: %v", err)

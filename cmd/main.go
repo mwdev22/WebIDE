@@ -25,6 +25,7 @@ func main() {
 	database.InitConn(db)
 
 	server := api.NewServer(":8080", db)
+
 	err = server.Run()
 	if err != nil {
 		log.Fatal(err)
