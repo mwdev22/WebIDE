@@ -53,4 +53,5 @@ func (s *Server) Run() error {
 	}))
 
 	return app.Listen(s.addr)
+
 }

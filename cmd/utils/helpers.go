@@ -2,10 +2,11 @@ package utils
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
+	"strings"
 
 	"github.com/mwdev22/WebIDE/cmd/storage"
 )
@@ -22,35 +23,42 @@ var formatterMap = map[string]string{
 	"py": "black",
 }
 
+var tempDir string = getFileDir("tmp")
+
 type ProgramResult string
-
-func CheckAndUpdate[T any, G any](payload T, entity *G) error {
-	payloadValue := reflect.ValueOf(payload)
-	entityValue := reflect.ValueOf(entity).Elem()
-
-	if payloadValue.Kind() != reflect.Struct || entityValue.Kind() != reflect.Struct {
-		return fmt.Errorf("invalid data types for update")
-	}
-
-	for i := 0; i < payloadValue.NumField(); i++ {
-		fieldValue := payloadValue.Field(i)
-		fieldName := payloadValue.Type().Field(i).Name
-
-		if fieldValue.IsValid() && !fieldValue.IsZero() {
-			entityField := entityValue.FieldByName(fieldName)
-			if entityField.IsValid() && entityField.CanSet() {
-				entityField.Set(fieldValue)
-			}
-		}
-	}
-	return nil
-}
 
 func GetRunCmd(extName string) string {
 	if cmd, exists := languageMap[extName]; exists {
 		return cmd
 	}
 	return ""
+}
+
+func getFileDir(dirname string) string {
+	cmd := exec.Command("go", "env", "GOMOD")
+	output, err := cmd.Output()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	goModPath := strings.TrimSpace(string(output))
+
+	if goModPath == "" {
+		log.Fatalf("go.mod file not found")
+	}
+
+	moduleDir := filepath.Dir(goModPath)
+
+	path := filepath.Join(moduleDir, dirname)
+
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		err := os.Mkdir(path, os.ModePerm)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	return path
 }
 
 func FormatCode(file *storage.File) error {
@@ -65,7 +73,7 @@ func FormatCode(file *storage.File) error {
 	}
 	defer os.RemoveAll(tempDir)
 
-	tempFilePath := filepath.Join(tempDir, file.Name+"."+file.Extension)
+	tempFilePath := filepath.Join(tempDir, file.Name)
 	if err := os.WriteFile(tempFilePath, []byte(file.Content), 0644); err != nil {
 		return fmt.Errorf("failed to write temp file: %s", err)
 	}
@@ -81,24 +89,20 @@ func FormatCode(file *storage.File) error {
 }
 
 func RunCode(file *storage.File) (ProgramResult, error) {
-	tempDir, err := os.MkdirTemp("", "code_run")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp directory: %s", err)
-	}
-	defer os.RemoveAll(tempDir)
 
-	tempFilePath := filepath.Join(tempDir, file.Name+"."+file.Extension)
+	tempFilePath := filepath.Join(tempDir, file.Name)
+
 	if err := os.WriteFile(tempFilePath, []byte(file.Content), 0644); err != nil {
 		return "", fmt.Errorf("failed to write temp file: %s", err)
 	}
 
 	var res []byte
+	var err error
 
 	switch file.Extension {
 	case "cpp":
 		cmdStr := languageMap[file.Extension]
 		cmd := exec.Command(cmdStr, tempFilePath)
-
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return "", fmt.Errorf("failed to compile C++ code: %v\nOutput: %s", err, output)
@@ -109,6 +113,7 @@ func RunCode(file *storage.File) (ProgramResult, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to run code: %v", err)
 		}
+
 	case "py":
 		cmdStr := languageMap[file.Extension]
 		cmd := exec.Command(cmdStr, tempFilePath)
@@ -116,9 +121,10 @@ func RunCode(file *storage.File) (ProgramResult, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to run code: %v", err)
 		}
+
 	case "sh":
 		format := exec.Command("dos2unix", tempFilePath)
-		_, err := format.CombinedOutput()
+		_, err = format.CombinedOutput()
 		if err != nil {
 			return "", fmt.Errorf("failed to convert file format: %v", err)
 		}
@@ -128,9 +134,12 @@ func RunCode(file *storage.File) (ProgramResult, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to run code: %v", err)
 		}
+
 	case "go":
 		cmdStr := languageMap[file.Extension]
-		cmd := exec.Command(cmdStr, "run", tempFilePath)
+		fmt.Println(cmdStr, tempFilePath)
+		cmd := exec.Command(cmdStr, tempFilePath)
+		fmt.Println(cmd)
 		res, err = cmd.CombinedOutput()
 		if err != nil {
 			return "", fmt.Errorf("failed to run code: %v", err)
